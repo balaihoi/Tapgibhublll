@@ -1,0 +1,87 @@
+-- [[ SCRIPT BAY SIÊU MƯỢT CHO MỌI GAME ROBLOX ]]
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local IsFlying = false
+local FlySpeed = 60 -- Tốc độ bay (Bạn có thể sửa số 60 này to hơn để bay nhanh hơn)
+
+-- Hàm hiện thông báo khi chạy script
+local function notify(title, text)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title;
+            Text = text;
+            Duration = 4;
+        })
+    end)
+end
+
+local function getCharacter() return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() end
+local function getRoot() local char = getCharacter() return char:WaitForChild("HumanoidRootPart") end
+
+-- Hàm xử lý cơ chế bay
+local function toggleFly()
+    IsFlying = not IsFlying
+    
+    if IsFlying then
+        notify("HỆ THỐNG BAY", "ĐÃ BẬT! Bấm E để Tắt.")
+    else
+        notify("HỆ THỐNG BAY", "ĐÃ TẮT!")
+        return
+    end
+
+    local hrp = getRoot()
+    
+    -- Giữ nhân vật không rơi
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = hrp
+    
+    -- Giữ nhân vật thăng bằng theo góc nhìn của Camera
+    local bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.CFrame = hrp.CFrame
+    bg.Parent = hrp
+
+    -- Vòng lặp di chuyển theo phím bấm W, A, S, D
+    task.spawn(function()
+        while IsFlying and hrp and hrp.Parent do
+            local moveDirection = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection = moveDirection + Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection = moveDirection - Camera.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection = moveDirection - Camera.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection = moveDirection - Camera.CFrame.RightVector end
+            
+            if moveDirection.Magnitude > 0 then
+                bv.Velocity = moveDirection.Unit * FlySpeed
+            else
+                bv.Velocity = Vector3.new(0, 0, 0)
+            end
+            
+            bg.CFrame = Camera.CFrame
+            RunService.Heartbeat:Wait()
+        end
+        
+        -- Xóa bỏ hiệu ứng bay khi tắt
+        if bv then bv:Destroy() end
+        if bg then bg:Destroy() end
+    end)
+end
+
+-- Lắng nghe nút bấm E trên bàn phím
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.E then
+        toggleFly()
+    end
+end)
+
+-- Thông báo khi vừa dán loadstring vào game thành công
+notify("Script Fly Hoạt Động", "Bấm phím E trên bàn phím để BAY!")
