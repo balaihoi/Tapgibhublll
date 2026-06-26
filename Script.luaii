@@ -1,0 +1,92 @@
+-- [[ MENU BAY PRO - ĐIỀU CHỈNH TỐC ĐỘ & BAY THEO CAMERA ]]
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local IsFlying = false
+local FlySpeed = 60
+
+-- Tạo Menu
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "FlyMenuPro"
+ScreenGui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 180, 0, 180)
+Frame.Position = UDim2.new(0.5, -90, 0.3, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.Draggable = true -- Có thể kéo menu đi
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+
+-- Nút Bật/Tắt
+local FlyButton = Instance.new("TextButton", Frame)
+FlyButton.Size = UDim2.new(0, 150, 0, 40)
+FlyButton.Position = UDim2.new(0.5, -75, 0.2, 0)
+FlyButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+FlyButton.Text = "BAY: TẮT"
+FlyButton.TextColor3 = Color3.new(1,1,1)
+FlyButton.Font = Enum.Font.Bold
+Instance.new("UICorner", FlyButton).CornerRadius = UDim.new(0, 8)
+
+-- Thanh chỉnh tốc độ
+local SpeedLabel = Instance.new("TextLabel", Frame)
+SpeedLabel.Size = UDim2.new(0, 150, 0, 30)
+SpeedLabel.Position = UDim2.new(0.5, -75, 0.6, 0)
+SpeedLabel.Text = "Tốc độ: 60"
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.TextColor3 = Color3.new(1,1,1)
+
+local Slider = Instance.new("TextButton", Frame)
+Slider.Size = UDim2.new(0, 150, 0, 20)
+Slider.Position = UDim2.new(0.5, -75, 0.8, 0)
+Slider.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Slider.Text = "Kéo để chỉnh tốc độ"
+Slider.TextColor3 = Color3.new(1,1,1)
+Slider.TextSize = 10
+
+-- Logic bay
+local BV, BG
+local function ToggleFly()
+    IsFlying = not IsFlying
+    local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return end
+    
+    if IsFlying then
+        FlyButton.Text = "BAY: BẬT"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+        BV = Instance.new("BodyVelocity", HRP)
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BG = Instance.new("BodyGyro", HRP)
+        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        BG.CFrame = HRP.CFrame
+        task.spawn(function()
+            while IsFlying and HRP.Parent do
+                local MoveDir = LocalPlayer.Character.Humanoid.MoveDirection
+                BV.Velocity = (Camera.CFrame.LookVector * (MoveDir.Z * FlySpeed)) + (Camera.CFrame.RightVector * (MoveDir.X * FlySpeed)) + (Vector3.new(0, MoveDir.Y * FlySpeed, 0))
+                BG.CFrame = Camera.CFrame
+                RunService.RenderStepped:Wait()
+            end
+        end)
+    else
+        FlyButton.Text = "BAY: TẮT"
+        FlyButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        if BV then BV:Destroy() end
+        if BG then BG:Destroy() end
+    end
+end
+
+FlyButton.MouseButton1Click:Connect(ToggleFly)
+
+-- Logic chỉnh tốc độ
+Slider.MouseButton1Down:Connect(function()
+    local mouse = LocalPlayer:GetMouse()
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        local relativeX = math.clamp((mouse.X - Slider.AbsolutePosition.X) / Slider.AbsoluteSize.X, 0, 1)
+        FlySpeed = math.floor(relativeX * 200) -- Tốc độ tối đa 200
+        SpeedLabel.Text = "Tốc độ: " .. FlySpeed
+    end)
+    Slider.MouseButton1Up:Connect(function() conn:Disconnect() end)
+end)
