@@ -1,0 +1,157 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local IsFlying = false
+local IsNoclip = false
+local IsFastRun = false
+local SpeedValue = 60 -- Tốc độ chung cho cả bay và chạy nhanh
+
+-- Xóa menu cũ nếu trùng
+if CoreGui:FindFirstChild("FlyMenuMobile") then CoreGui:FindFirstChild("FlyMenuMobile"):Destroy() end
+
+-- 1. TẠO MENU CHÍNH (Nới rộng bảng lên một chút để thêm nút)
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "FlyMenuMobile"
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 180, 0, 230)
+MainFrame.Position = UDim2.new(0.5, -90, 0.35, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+-- HÀM KÉO THẢ MENU MƯỢT MÀ
+local dragging, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+
+-- NÚT 1: BAY (FLY)
+local FlyBtn = Instance.new("TextButton", MainFrame)
+FlyBtn.Size = UDim2.new(0, 150, 0, 40); FlyBtn.Position = UDim2.new(0.5, -75, 0.08, 0)
+FlyBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50); FlyBtn.Text = "BAY: TẮT"
+FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255); FlyBtn.Font = Enum.Font.GothamBold; FlyBtn.TextSize = 14
+Instance.new("UICorner", FlyBtn).CornerRadius = UDim.new(0, 8)
+
+-- NÚT 2: CHẠY NHANH (SPEED)
+local RunBtn = Instance.new("TextButton", MainFrame)
+RunBtn.Size = UDim2.new(0, 150, 0, 40); RunBtn.Position = UDim2.new(0.5, -75, 0.28, 0)
+RunBtn.BackgroundColor3 = Color3.fromRGB(230, 130, 10)
+RunBtn.Text = "CHẠY NHANH: TẮT"
+RunBtn.TextColor3 = Color3.fromRGB(255, 255, 255); RunBtn.Font = Enum.Font.GothamBold; RunBtn.TextSize = 14
+Instance.new("UICorner", RunBtn).CornerRadius = UDim.new(0, 8)
+
+-- NÚT 3: XUYÊN TƯỜNG (NOCLIP)
+local NoclipBtn = Instance.new("TextButton", MainFrame)
+NoclipBtn.Size = UDim2.new(0, 150, 0, 40); NoclipBtn.Position = UDim2.new(0.5, -75, 0.48, 0)
+NoclipBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 255); NoclipBtn.Text = "XUYÊN: TẮT"
+NoclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255); NoclipBtn.Font = Enum.Font.GothamBold; NoclipBtn.TextSize = 14
+Instance.new("UICorner", NoclipBtn).CornerRadius = UDim.new(0, 8)
+
+-- KHU VỰC CHỈNH TỐC ĐỘ
+local SpeedLabel = Instance.new("TextLabel", MainFrame)
+SpeedLabel.Size = UDim2.new(0, 100, 0, 30); SpeedLabel.Position = UDim2.new(0.5, -50, 0.78, 0)
+SpeedLabel.BackgroundTransparency = 1; SpeedLabel.Text = "Tốc độ: " .. SpeedValue
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255); SpeedLabel.Font = Enum.Font.GothamBold; SpeedLabel.TextSize = 14
+
+local DecBtn = Instance.new("TextButton", MainFrame)
+DecBtn.Size = UDim2.new(0, 30, 0, 30); DecBtn.Position = UDim2.new(0.1, 0, 0.78, 0)
+DecBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); DecBtn.Text = "-"
+DecBtn.TextColor3 = Color3.fromRGB(255, 255, 255); DecBtn.Font = Enum.Font.GothamBold; DecBtn.TextSize = 18
+Instance.new("UICorner", DecBtn).CornerRadius = UDim.new(0, 6)
+
+local IncBtn = Instance.new("TextButton", MainFrame)
+IncBtn.Size = UDim2.new(0, 30, 0, 30); IncBtn.Position = UDim2.new(0.75, 0, 0.78, 0)
+IncBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60); IncBtn.Text = "+"
+IncBtn.TextColor3 = Color3.fromRGB(255, 255, 255); IncBtn.Font = Enum.Font.GothamBold; IncBtn.TextSize = 18
+Instance.new("UICorner", IncBtn).CornerRadius = UDim.new(0, 6)
+
+-- SỰ KIỆN TĂNG GIẢM TỐC ĐỘ
+DecBtn.MouseButton1Click:Connect(function() 
+    SpeedValue = math.max(16, SpeedValue - 10) 
+    SpeedLabel.Text = "Tốc độ: " .. SpeedValue 
+end)
+IncBtn.MouseButton1Click:Connect(function() 
+    SpeedValue = math.min(300, SpeedValue + 10) 
+    SpeedLabel.Text = "Tốc độ: " .. SpeedValue 
+end)
+
+-- VÒNG LẶP HỆ THỐNG (Xử lý Xuyên tường & Chạy nhanh liên tục để tránh game reset)
+RunService.Stepped:Connect(function()
+    local Character = LocalPlayer.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    
+    -- Xử lý xuyên tường
+    if IsNoclip and Character then
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+        end
+    end
+    
+    -- Xử lý chạy nhanh khi không bay
+    if Humanoid and not IsFlying then
+        if IsFastRun then
+            Humanoid.WalkSpeed = SpeedValue
+        else
+            Humanoid.WalkSpeed = 16 -- Tốc độ mặc định của Roblox
+        end
+    end
+end)
+
+-- BẬT/TẮT CHẠY NHANH
+RunBtn.MouseButton1Click:Connect(function()
+    IsFastRun = not IsFastRun
+    RunBtn.Text = IsFastRun and "CHẠY NHANH: BẬT" or "CHẠY NHANH: TẮT"
+    RunBtn.BackgroundColor3 = IsFastRun and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(230, 130, 10)
+end)
+
+-- BẬT/TẮT XUYÊN TƯỜNG
+NoclipBtn.MouseButton1Click:Connect(function()
+    IsNoclip = not IsNoclip
+    NoclipBtn.Text = IsNoclip and "XUYÊN: BẬT" or "XUYÊN: TẮT"
+    NoclipBtn.BackgroundColor3 = IsNoclip and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(100, 100, 255)
+end)
+
+-- LOGIC BAY (Giữ nguyên phong cách Admin)
+local BV, BG
+FlyBtn.MouseButton1Click:Connect(function()
+    IsFlying = not IsFlying
+    local Character = LocalPlayer.Character
+    local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    if not HRP then return end
+    
+    if IsFlying then
+        FlyBtn.Text = "BAY: BẬT"; FlyBtn.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+        Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        
+        BV = Instance.new("BodyVelocity", HRP); BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BG = Instance.new("BodyGyro", HRP); BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge); BG.CFrame = Camera.CFrame
+        
+        task.spawn(function()
+            while IsFlying and HRP.Parent do
+                if Humanoid:GetState() ~= Enum.HumanoidStateType.Physics then Humanoid:ChangeState(Enum.HumanoidStateType.Physics) end
+                local dir = Humanoid.MoveDirection
+                BV.Velocity = (dir.Magnitude > 0 and (dir:Dot(Camera.CFrame.LookVector) > -0.5 and Camera.CFrame.LookVector or dir) * SpeedValue) or Vector3.zero
+                BG.CFrame = Camera.CFrame
+                RunService.RenderStepped:Wait()
+            end
+        end)
+    else
+        FlyBtn.Text = "BAY: TẮT"; FlyBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        if Humanoid then Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        if BV then BV:Destroy() end; if BG then BG:Destroy() end
+    end
+end)
